@@ -60,11 +60,11 @@ Gdip_DpiBitmapFromScreen(Screen:=0, Raster:="", i:=0)
 	switch (GetThreadDpiAwarenessContextIgnoringInfoFlag())
 	{
 		case -1,-5:
-			DpiAwareCoord.convertUnwToMon(_x1, _y1, i)
-			DpiAwareCoord.convertUnwToMon(_x2, _y2, i)
+			DpiAwareCoord.convertUnwToMon(&_x1, &_y1, i)
+			DpiAwareCoord.convertUnwToMon(&_x2, &_y2, i)
 		case -2:
-			DpiAwareCoord.convertSysToMon(_x1, _y1, i)
-			DpiAwareCoord.convertSysToMon(_x2, _y2, i)
+			DpiAwareCoord.convertSysToMon(&_x1, &_y1, i)
+			DpiAwareCoord.convertSysToMon(&_x2, &_y2, i)
 	}
 	_x := _x1, _y := _y1, _w := _x2-_x1, _h := _y2-_y1
 
