@@ -1,9 +1,9 @@
 ﻿#Requires AutoHotkey v2.0.0+
-#Include %A_ScriptDir%
-#Include .\lib\DpiAwareCoord.ahk
-#Include .\lib\DpiAwarenessContextUtils.ahk
-#Include .\lib\MonitorExGetUtils.ahk
-#Include .\vendor\Gdip_All.ahk ;  Tested with https://github.com/buliasz/AHKv2-Gdip/blob/d3ddef1c11c58cac52c73caab8fcbf47a4dca30c/Gdip_All.ahk
+#Include "%A_ScriptDir%"
+#Include ".\lib\DpiAwareCoord.ahk"
+#Include ".\lib\DpiAwarenessContextUtils.ahk"
+#Include ".\lib\MonitorExGetUtils.ahk"
+#Include ".\vendor\Gdip_All.ahk" ;  Tested with https://github.com/buliasz/AHKv2-Gdip/blob/d3ddef1c11c58cac52c73caab8fcbf47a4dca30c/Gdip_All.ahk
 ;=============================================================
 ; GdipDpiBitmapUtils — DPI-aware GDI+ bitmap capture helpers
 ;
