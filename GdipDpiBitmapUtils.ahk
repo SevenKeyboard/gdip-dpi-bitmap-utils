@@ -16,7 +16,7 @@ class VersionManager_GdipDpiBitmapUtils
     static _ := VersionManager_GdipDpiBitmapUtils._init()
     _init()    {
         global
-        GDIPDPIBITMAPUTILS_VERSION := "2.0.0"
+        GDIPDPIBITMAPUTILS_VERSION := "2.0.1"
     }
 }
 ;#####################################################################################
@@ -66,7 +66,10 @@ Gdip_DpiBitmapFromScreen(Screen:=0, Raster:="")
 				DpiAwareCoord.convertSysToMon(_x1, _y1, i, false)
 				DpiAwareCoord.convertSysToMon(_x2, _y2, i, false)
 		}
-		_x := Round(_x1), _y := Round(_y1), _w := Round(_x2-_x1), _h := Round(_y2-_y1)
+		_x := Floor(_x1)
+		_y := Floor(_y1)
+		_w := Ceil(_x2) - _x
+		_h := Ceil(_y2) - _y
 	}
 
 	if (_x = "") || (_y = "") || (_w = "") || (_h = "")
@@ -117,28 +120,28 @@ Gdip_DpiBitmapFromHWND(hwnd, UseMatchedThreadDpiContext:=False)
 				{
 					case -2:
 						PrimaryScale := MonitorExGetScaleFactor()
-						Width := Round(Width*PrimaryScale/100)
-						Height := Round(Height*PrimaryScale/100)
+						Width := Ceil(Width*PrimaryScale/100)
+						Height := Ceil(Height*PrimaryScale/100)
 					case -3, -4:
 						MonitorIndex := winGetWhichMonitor(hWnd)
 						PrimaryScale := MonitorExGetScaleFactor()
 						CurrentScale := MonitorExGetScaleFactor(MonitorIndex)
-						Width := Round(Width*CurrentScale/100)
-						Height := Round(Height*CurrentScale/100)
+						Width := Ceil(Width*CurrentScale/100)
+						Height := Ceil(Height*CurrentScale/100)
 				}
 			default:
 				switch WindowDpiCtx
 				{
 					case -1, -5:
 						PrimaryScale := MonitorExGetScaleFactor()
-						Width := Round(Width*100/PrimaryScale)
-						Height := Round(Height*100/PrimaryScale)
+						Width := Ceil(Width*100/PrimaryScale)
+						Height := Ceil(Height*100/PrimaryScale)
 					case -3, -4:
 						MonitorIndex := winGetWhichMonitor(hWnd)
 						PrimaryScale := MonitorExGetScaleFactor()
 						CurrentScale := MonitorExGetScaleFactor(MonitorIndex)
-						Width := Round(Width*CurrentScale/PrimaryScale)
-						Height := Round(Height*CurrentScale/PrimaryScale)
+						Width := Ceil(Width*CurrentScale/PrimaryScale)
+						Height := Ceil(Height*CurrentScale/PrimaryScale)
 				}
 			case -3, -4:
 				switch WindowDpiCtx
@@ -146,14 +149,14 @@ Gdip_DpiBitmapFromHWND(hwnd, UseMatchedThreadDpiContext:=False)
 					case -1, -5:
 						MonitorIndex := winGetWhichMonitor(hWnd)
 						CurrentScale := MonitorExGetScaleFactor(MonitorIndex)
-						Width := Round(Width*100/CurrentScale)
-						Height := Round(Height*100/CurrentScale)
+						Width := Ceil(Width*100/CurrentScale)
+						Height := Ceil(Height*100/CurrentScale)
 					case -2:
 						MonitorIndex := winGetWhichMonitor(hWnd)
 						PrimaryScale := MonitorExGetScaleFactor()
 						CurrentScale := MonitorExGetScaleFactor(MonitorIndex)
-						Width := Round(Width*PrimaryScale/CurrentScale)
-						Height := Round(Height*PrimaryScale/CurrentScale)
+						Width := Ceil(Width*PrimaryScale/CurrentScale)
+						Height := Ceil(Height*PrimaryScale/CurrentScale)
 				}
 		}
 	}
