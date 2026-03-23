@@ -16,7 +16,7 @@ class VersionManager_GdipDpiBitmapUtils
     static _ := VersionManager_GdipDpiBitmapUtils._init()
     _init()    {
         global
-        GDIPDPIBITMAPUTILS_VERSION := "1.0.0"
+        GDIPDPIBITMAPUTILS_VERSION := "2.0.0"
     }
 }
 ;#####################################################################################
@@ -24,8 +24,10 @@ class VersionManager_GdipDpiBitmapUtils
 ; Function				Gdip_DpiBitmapFromScreen
 ; Base Function			Gdip_BitmapFromScreen
 ;						https://github.com/mmikeww/AHKv2-Gdip/blob/master/Gdip_All.ahk#L306
+;
+; notes					Currently, DPI correction is applied only to directly specified coordinates
 
-Gdip_DpiBitmapFromScreen(Screen:=0, Raster:="", i:=0)
+Gdip_DpiBitmapFromScreen(Screen:=0, Raster:="")
 {
 	hhdc := 0
 	Ptr := A_PtrSize ? "UPtr" : "UInt"
@@ -53,23 +55,22 @@ Gdip_DpiBitmapFromScreen(Screen:=0, Raster:="", i:=0)
 	else
 	{
 		S := StrSplit(Screen, "|")
-		_x := S[1], _y := S[2], _w := S[3], _h := S[4]
+		_x1 := S[1], _y1 := S[2], _x2 := S[1]+S[3], _y2 := S[2]+S[4]
+		i := S.HasKey(5) ? S[5] : 0
+		switch GetThreadDpiAwarenessContextIgnoringInfoFlag()
+		{
+			case -1,-5:
+				DpiAwareCoord.convertUnwToMon(_x1, _y1, i, false)
+				DpiAwareCoord.convertUnwToMon(_x2, _y2, i, false)
+			case -2:
+				DpiAwareCoord.convertSysToMon(_x1, _y1, i, false)
+				DpiAwareCoord.convertSysToMon(_x2, _y2, i, false)
+		}
+		_x := Round(_x1), _y := Round(_y1), _w := Round(_x2-_x1), _h := Round(_y2-_y1)
 	}
 
 	if (_x = "") || (_y = "") || (_w = "") || (_h = "")
 		return -1
-
-	_x1 := _x, _y1 := _y, _x2 := _x+_w, _y2 := _y+_h
-	switch (GetThreadDpiAwarenessContextIgnoringInfoFlag())
-	{
-		case -1,-5:
-			DpiAwareCoord.convertUnwToMon(_x1, _y1, i, false)
-			DpiAwareCoord.convertUnwToMon(_x2, _y2, i, false)
-		case -2:
-			DpiAwareCoord.convertSysToMon(_x1, _y1, i, false)
-			DpiAwareCoord.convertSysToMon(_x2, _y2, i, false)
-	}
-	_x := Round(_x1), _y := Round(_y1), _w := Round(_x2-_x1), _h := Round(_y2-_y1)
 
 	chdc := CreateCompatibleDC(), hbm := CreateDIBSection(_w, _h, chdc), obm := SelectObject(chdc, hbm), hhdc := hhdc ? hhdc : GetDC()
 	BitBlt(chdc, 0, 0, _w, _h, hhdc, _x, _y, Raster)
@@ -86,54 +87,75 @@ Gdip_DpiBitmapFromScreen(Screen:=0, Raster:="", i:=0)
 ; Base Function			Gdip_BitmapFromHWND
 ;						https://github.com/mmikeww/AHKv2-Gdip/blob/master/Gdip_All.ahk#L364
 
-Gdip_DpiBitmapFromHWND(hwnd)
+Gdip_DpiBitmapFromHWND(hwnd, UseMatchedThreadDpiContext:=False)
 {
-	WinGetRect(hwnd,,, Width, Height)
-	switch GetThreadDpiAwarenessContextIgnoringInfoFlag()
-	{
-		case -1, -5:
-			switch GetWindowDpiAwarenessContextIgnoringInfoFlag(hWnd)
-			{
-				case -2:
-					PrimaryScale := MonitorExGetScaleFactor()
-					Width := Round(Width*PrimaryScale/100)
-					Height := Round(Height*PrimaryScale/100)
-				case -3, -4:
-					MonitorIndex := winGetWhichMonitor(hWnd)
-					PrimaryScale := MonitorExGetScaleFactor()
-					CurrentScale := MonitorExGetScaleFactor(MonitorIndex)
-					Width := Round(Width*CurrentScale/100)
-					Height := Round(Height*CurrentScale/100)
+	if (UseMatchedThreadDpiContext)    {
+		prevCriticalState := A_IsCritical
+		Critical On
+		PrevThreadDpiCtxRaw := 0
+		try  {
+			ThreadDpiCtxRaw := GetThreadDpiAwarenessContext()
+			WindowDpiCtxRaw := GetWindowDpiAwarenessContext(hWnd)
+			try  {
+				if !AreDpiAwarenessContextsEqual(ThreadDpiCtxRaw, WindowDpiCtxRaw)
+					PrevThreadDpiCtxRaw := SetThreadDpiAwarenessContext(WindowDpiCtxRaw)
 			}
-		default:
-			switch GetWindowDpiAwarenessContextIgnoringInfoFlag(hWnd)
-			{
-				case -1, -5:
-					PrimaryScale := MonitorExGetScaleFactor()
-					Width := Round(Width*100/PrimaryScale)
-					Height := Round(Height*100/PrimaryScale)
-				case -3, -4:
-					MonitorIndex := winGetWhichMonitor(hWnd)
-					PrimaryScale := MonitorExGetScaleFactor()
-					CurrentScale := MonitorExGetScaleFactor(MonitorIndex)
-					Width := Round(Width*CurrentScale/PrimaryScale)
-					Height := Round(Height*CurrentScale/PrimaryScale)
-			}
-		case -3, -4:
-			switch GetWindowDpiAwarenessContextIgnoringInfoFlag(hWnd)
-			{
-				case -1, -5:
-					MonitorIndex := winGetWhichMonitor(hWnd)
-					CurrentScale := MonitorExGetScaleFactor(MonitorIndex)
-					Width := Round(Width*100/CurrentScale)
-					Height := Round(Height*100/CurrentScale)
-				case -2:
-					MonitorIndex := winGetWhichMonitor(hWnd)
-					PrimaryScale := MonitorExGetScaleFactor()
-					CurrentScale := MonitorExGetScaleFactor(MonitorIndex)
-					Width := Round(Width*PrimaryScale/CurrentScale)
-					Height := Round(Height*PrimaryScale/CurrentScale)
-			}
+			WinGetRect(hwnd,,, Width, Height)
+		}  finally  {
+			if (PrevThreadDpiCtxRaw)
+				try SetThreadDpiAwarenessContext(PrevThreadDpiCtxRaw)
+			Critical %prevCriticalState%
+		}
+	}  else  {
+		ThreadDpiCtx := GetThreadDpiAwarenessContextIgnoringInfoFlag()
+		WindowDpiCtx := GetWindowDpiAwarenessContextIgnoringInfoFlag(hWnd)
+		WinGetRect(hwnd,,, Width, Height)
+		switch ThreadDpiCtx
+		{
+			case -1, -5:
+				switch WindowDpiCtx
+				{
+					case -2:
+						PrimaryScale := MonitorExGetScaleFactor()
+						Width := Round(Width*PrimaryScale/100)
+						Height := Round(Height*PrimaryScale/100)
+					case -3, -4:
+						MonitorIndex := winGetWhichMonitor(hWnd)
+						PrimaryScale := MonitorExGetScaleFactor()
+						CurrentScale := MonitorExGetScaleFactor(MonitorIndex)
+						Width := Round(Width*CurrentScale/100)
+						Height := Round(Height*CurrentScale/100)
+				}
+			default:
+				switch WindowDpiCtx
+				{
+					case -1, -5:
+						PrimaryScale := MonitorExGetScaleFactor()
+						Width := Round(Width*100/PrimaryScale)
+						Height := Round(Height*100/PrimaryScale)
+					case -3, -4:
+						MonitorIndex := winGetWhichMonitor(hWnd)
+						PrimaryScale := MonitorExGetScaleFactor()
+						CurrentScale := MonitorExGetScaleFactor(MonitorIndex)
+						Width := Round(Width*CurrentScale/PrimaryScale)
+						Height := Round(Height*CurrentScale/PrimaryScale)
+				}
+			case -3, -4:
+				switch WindowDpiCtx
+				{
+					case -1, -5:
+						MonitorIndex := winGetWhichMonitor(hWnd)
+						CurrentScale := MonitorExGetScaleFactor(MonitorIndex)
+						Width := Round(Width*100/CurrentScale)
+						Height := Round(Height*100/CurrentScale)
+					case -2:
+						MonitorIndex := winGetWhichMonitor(hWnd)
+						PrimaryScale := MonitorExGetScaleFactor()
+						CurrentScale := MonitorExGetScaleFactor(MonitorIndex)
+						Width := Round(Width*PrimaryScale/CurrentScale)
+						Height := Round(Height*PrimaryScale/CurrentScale)
+				}
+		}
 	}
 	hbm := CreateDIBSection(Width, Height), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
 	PrintWindow(hwnd, hdc)
